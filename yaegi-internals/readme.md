@@ -370,7 +370,7 @@ a next article:
 - Virtualization and sandboxing
 - REPL and interactive use
 
-P.S. Thanks to [@lejatorn](https://twitter/@lejatorn) for his feedback
+P.S. Thanks to [@lejatorn](https://twitter.com/@lejatorn) for his feedback
 and suggestions on this post.
 
 [Yaegi]: https://github.com/traefik/yaegi
