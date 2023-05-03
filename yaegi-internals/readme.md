@@ -370,8 +370,8 @@ a next article:
 - Virtualization and sandboxing
 - REPL and interactive use
 
-P.S. Thanks to [@lejatorn] for his feedback and suggestions on this
-post.
+P.S. Thanks to [@lejatorn](https://twitter/@lejatorn) for his feedback
+and suggestions on this post.
 
 [Yaegi]: https://github.com/traefik/yaegi
 [plugins.traefik.io]: https://plugins.traefik.io
