@@ -44,3 +44,6 @@ for d in *; do
 	[ -d "$d" ] && genhtml "$d"
 done
 genhtml .
+
+# Fix for mastodon.
+sed '/mstdn/s/href=/rel="me" href=/' index.html >xx && mv xx index.html
