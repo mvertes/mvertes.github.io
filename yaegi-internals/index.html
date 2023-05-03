@@ -328,14 +328,18 @@ no infinite loops.</p>
 execution</h2>
 <p>The compiler implemented in yaegi targets the Go runtime itself, not
 a particular hardware architecture. For each action node in the CFG a
-corresponding closure is generated. The main benefits are: -
-Portability: the generated code runs on any platform where Go is
-supported. - Interoperability: the objects produced by the interpreter
-are directly usable by the host program in the form of reflect values. -
-The memory management in particular the garbage collector, is provided
-by the runtime, and applies also to the values created by the
-interpreter. - The support of runtime type safety, slices, maps,
-channels, goroutines is also provided by the runtime.</p>
+corresponding closure is generated. The main benefits are:</p>
+<ul>
+<li>Portability: the generated code runs on any platform where Go is
+supported.</li>
+<li>Interoperability: the objects produced by the interpreter are
+directly usable by the host program in the form of reflect values.</li>
+<li>The memory management in particular the garbage collector, is
+provided by the runtime, and applies also to the values created by the
+interpreter.</li>
+<li>The support of runtime type safety, slices, maps, channels,
+goroutines is also provided by the runtime.</li>
+</ul>
 <p>The action templates are located in <a
 href="https://github.com/traefik/yaegi/blob/master/interp/run.go">interp/run.go</a>
 and <a

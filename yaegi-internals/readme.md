@@ -310,6 +310,7 @@ privileged environment and guarantee no infinite loops.
 The compiler implemented in yaegi targets the Go runtime itself, not a
 particular hardware architecture. For each action node in the CFG a
 corresponding closure is generated. The main benefits are:
+
 - Portability: the generated code runs on any platform where Go is
   supported.
 - Interoperability: the objects produced by the interpreter are directly
