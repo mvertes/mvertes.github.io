@@ -340,7 +340,7 @@ provided by the Go runtime.
 
 ![figure 6: frame organization](frame1.drawio.svg)
 
-The memory management performed by the interpreter consists to create a
+The memory management performed by the interpreter consists of creating a
 global frame at a new session (the top of the stack), populated with all
 global values (constants, types, variables and functions). At each new
 interpreted function call, a new frame is pushed on the stack,

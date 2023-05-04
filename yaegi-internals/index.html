@@ -363,12 +363,12 @@ runtime.</p>
 <img src="frame1.drawio.svg" alt="figure 6: frame organization" />
 <figcaption aria-hidden="true">figure 6: frame organization</figcaption>
 </figure>
-<p>The memory management performed by the interpreter consists to create
-a global frame at a new session (the top of the stack), populated with
-all global values (constants, types, variables and functions). At each
-new interpreted function call, a new frame is pushed on the stack,
-containing the values for all the return value, input parameters and
-local variables of the function.</p>
+<p>The memory management performed by the interpreter consists of
+creating a global frame at a new session (the top of the stack),
+populated with all global values (constants, types, variables and
+functions). At each new interpreted function call, a new frame is pushed
+on the stack, containing the values for all the return value, input
+parameters and local variables of the function.</p>
 <h2 id="conclusion">Conclusion</h2>
 <p>We have described the general architecture of a Go interpreter,
 reusing the existing Go scanner and parser. We have focused on the
