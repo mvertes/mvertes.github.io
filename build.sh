@@ -37,7 +37,7 @@ genhtml() (
 	pandoc *.md
 
 	# Footer
-	echo "<hr>From: $author, $date"
+	[ "$1" != . ] && echo "<hr>From: $author, $date"
 )
 
 for d in *; do
@@ -47,3 +47,6 @@ genhtml .
 
 # Fix for mastodon.
 sed '/mstdn/s/href=/rel="me" href=/' index.html >xx && mv xx index.html
+# Put a license in index footer.
+echo '<hr><small>Unless otherwise noted, posts are licensed under 
+<a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</small>' >>index.html
