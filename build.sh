@@ -45,5 +45,4 @@ genhtml .
 sed '/mstdn/s/href=/rel="me" href=/' index.html >xx && mv xx index.html
 # Put a license in index footer.
 echo '<hr><small>Unless otherwise noted, posts are licensed under 
-<a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</small>
-</html>' >>index.html
+<a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</small>' >>index.html
