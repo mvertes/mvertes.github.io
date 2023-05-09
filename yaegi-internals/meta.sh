@@ -1,4 +1,5 @@
 blog_title="Marc's Programming Notes"
 title="Yaegi Internals"
 author="Marc Vertes"
+description="Design and implementation of a Go interpreter"
 date="03 may 2023"
