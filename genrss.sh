@@ -23,7 +23,7 @@ for d in *; do
 		<description>$description</description>
 		<author>$author</author>
 		<pubDate>$date_rfc2822</pubDate>
-		<content:encoded><![CDATA[$(awk '/<h1 / {p=!p} p' index.html)]]>
+		<content:encoded><![CDATA[$(awk '/<h1 / {p=!p} p' index.html)]]></content:encoded>
 		</item>
 	EOT
 done
