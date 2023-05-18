@@ -4,13 +4,11 @@
 <title>Marc's Programming Notes</title>
 <link>https://marc.vertes.org/</link>
 <description>A blog about programming</description>
-<managingEditor>mvertes@free.fr</managingEditor>
 <pubDate>Thu, 18 May 2023 19:05:48 +0200</pubDate>
 <item>
 <title>Yaegi Internals</title>
 <link>https://marc.vertes.org/yaegi-internals/</link>
 <description>Design and implementation of a Go interpreter</description>
-<author>Marc Vertes</author>
 <pubDate>Wed, 03 May 2023 12:00:00 +0200</pubDate>
 <content:encoded><![CDATA[<h1 id="yaegi-internals">Yaegi internals</h1>
 <p><a href="https://github.com/traefik/yaegi">Yaegi</a> is an
