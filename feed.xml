@@ -41,7 +41,7 @@ line:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode go"><code class="sourceCode go"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>interp<span class="op">.</span>Eval<span class="op">(</span><span class="st">`print(&quot;hello&quot;, 2+3)`</span><span class="op">)</span></span></code></pre></div>
 <p>The following figure 1 displays the main steps of evaluation:</p>
 <figure>
-<img src="yaegi_internals_fig1.drawio.svg"
+<img src="https://marc.vertes.org/yaegi-internals/yaegi_internals_fig1.drawio.svg"
 alt="figure 1: steps of evaluation" />
 <figcaption aria-hidden="true">figure 1: steps of
 evaluation</figcaption>
@@ -129,7 +129,7 @@ system as a whole. We can do that using a simple example:</p>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span><span class="op">(</span><span class="st">&quot;bye&quot;</span><span class="op">)</span></span></code></pre></div>
 <p>The corresponding AST is:</p>
 <figure>
-<img src="ex1_raw_ast.drawio.svg" alt="figure 2: a raw AST" />
+<img src="https://marc.vertes.org/yaegi-internals/ex1_raw_ast.drawio.svg" alt="figure 2: a raw AST" />
 <figcaption aria-hidden="true">figure 2: a raw AST</figcaption>
 </figure>
 <p>This is the raw AST, with no annotations, as obtained from the
@@ -254,7 +254,7 @@ form in the Go compiler. In yaegi, no IR is produced, only AST
 annotations are used.</p>
 <p>Let’s use our previous example to explain:</p>
 <figure>
-<img src="ex1_ast_cfg.drawio.svg" alt="figure 3: CFG is in AST" />
+<img src="https://marc.vertes.org/yaegi-internals/ex1_ast_cfg.drawio.svg" alt="figure 3: CFG is in AST" />
 <figcaption aria-hidden="true">figure 3: CFG is in AST</figcaption>
 </figure>
 <p>In the AST, the nodes relevant to the CFG are the <em>action</em>
@@ -289,7 +289,7 @@ code also performs dead branch elimination and condition validity
 checking. At this stage, in terms of Control Flow, our AST example can
 now be seen as a simpler representation, such as the following.</p>
 <figure>
-<img src="ex1_cfg.drawio.svg" alt="figure 4: the same CFG isolated" />
+<img src="https://marc.vertes.org/yaegi-internals/ex1_cfg.drawio.svg" alt="figure 4: the same CFG isolated" />
 <figcaption aria-hidden="true">figure 4: the same CFG
 isolated</figcaption>
 </figure>
@@ -303,7 +303,7 @@ to left), thus allowing <em>loops</em>, makes the action set to become
 <a href="https://en.wikipedia.org/wiki/Turing_completeness">Turing
 complete</a>, implementing a universal computing machine.</p>
 <figure>
-<img src="ex1_cfg_loop.drawio.svg" alt="figure 5: a CFG with a loop" />
+<img src="https://marc.vertes.org/yaegi-internals/ex1_cfg_loop.drawio.svg" alt="figure 5: a CFG with a loop" />
 <figcaption aria-hidden="true">figure 5: a CFG with a loop</figcaption>
 </figure>
 <p>The character of universality here lies in the cyclic nature of the
@@ -352,7 +352,7 @@ directly on Go interfaces (more precisely their reflect representation),
 hiding a lot of low level processing and subtleties provided by the Go
 runtime.</p>
 <figure>
-<img src="frame1.drawio.svg" alt="figure 6: frame organization" />
+<img src="https://marc.vertes.org/yaegi-internals/frame1.drawio.svg" alt="figure 6: frame organization" />
 <figcaption aria-hidden="true">figure 6: frame organization</figcaption>
 </figure>
 <p>The memory management performed by the interpreter consists of
