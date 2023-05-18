@@ -1,0 +1,392 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+<channel>
+<title>Marc's Programming Notes</title>
+<link>https://marc.vertes.org/</link>
+<description>A blog about programming</description>
+<managingEditor>mvertes@free.fr</managingEditor>
+<pubDate>Thu, 18 May 2023 18:53:56 +0200</pubDate>
+<item>
+<title>Yaegi Internals</title>
+<link>https://marc.vertes.org/yaegi-internals/</link>
+<description>Design and implementation of a Go interpreter</description>
+<author>Marc Vertes</author>
+<pubDate>Wed, 03 May 2023 12:00:00 +0200</pubDate>
+<content:encoded><![CDATA[<h1 id="yaegi-internals">Yaegi internals</h1>
+<p><a href="https://github.com/traefik/yaegi">Yaegi</a> is an
+interpreter of the Go language written in Go. This project was started
+in Traefik-Labs initially to provide a simple and practical embedded
+plugin engine for the traefik reverse proxy. Now, more than 200 plugins
+contributed by the community are listed on the public catalog at <a
+href="https://plugins.traefik.io">plugins.traefik.io</a>. The use of
+yaegi extends also to other domains, for example <a
+href="https://github.com/xo/xo">databases</a>, <a
+href="https://github.com/slok/sloth">observability</a>, <a
+href="https://github.com/cyberark/kubesploit">container security</a> and
+many <a
+href="https://github.com/traefik/yaegi/network/dependents?package_id=UGFja2FnZS0yMjc1NTQ3MjIy">others</a>.</p>
+<p>Yaegi is lean and mean, as it delivers in a single package, with no
+external dependency, a complete Go interpreter, compliant with the <a
+href="https://go.dev/ref/spec">Go specification</a>. Lean, but also
+mean: its code is dense, complex, not always idiomatic, and sometimes
+maybe hard to understand.</p>
+<p>This document is here to address that. In the following, after
+getting an overview, we look under the hood, explore the internals and
+discuss the design. Our aim is to provide the essential insights,
+clarify the architecture and the code organization. But first, the
+overview.</p>
+<h2 id="overview-of-architecture">Overview of architecture</h2>
+<p>Let’s see what happens inside yaegi when one executes the following
+line:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode go"><code class="sourceCode go"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>interp<span class="op">.</span>Eval<span class="op">(</span><span class="st">`print(&quot;hello&quot;, 2+3)`</span><span class="op">)</span></span></code></pre></div>
+<p>The following figure 1 displays the main steps of evaluation:</p>
+<figure>
+<img src="yaegi_internals_fig1.drawio.svg"
+alt="figure 1: steps of evaluation" />
+<figcaption aria-hidden="true">figure 1: steps of
+evaluation</figcaption>
+</figure>
+<ol type="1">
+<li><p>The <em>scanner</em> (provided by the <a
+href="https://pkg.go.dev/go/scanner">go/scanner</a> package) transforms
+a stream of characters (the source code) into a stream of tokens,
+through a <a
+href="https://en.wikipedia.org/wiki/Lexical_analysis">lexical
+analysis</a> step.</p></li>
+<li><p>The <em>parser</em> (provided by the <a
+href="https://pkg.go.dev/go/parser">go/parser</a> package) transforms
+the stream of tokens into an <a
+href="https://en.wikipedia.org/wiki/Abstract_syntax_tree">abstract
+syntax tree</a> or AST, through a <a
+href="https://en.wikipedia.org/wiki/Syntax_analysis">syntax analysis</a>
+step.</p></li>
+<li><p>The <em>analyser</em> (implemented in the <a
+href="https://pkg.go.dev/github.com/traefik/yaegi/interp">yaegi/interp</a>
+package) performs the checks and creation of type, constant, variable
+and function symbols. It also computes the <a
+href="https://en.wikipedia.org/wiki/Control-flow_graph">control-flow
+graphs</a> and memory allocations for symbols, through <a
+href="https://en.wikipedia.org/wiki/Semantic_analysis_(compilers)">semantic
+analysis</a> steps. All those metadata are obtained from and stored to
+the nodes of the AST, making it annotated.</p></li>
+<li><p>The <em>generator</em> (implemented in the <a
+href="https://pkg.go.dev/github.com/traefik/yaegi/interp">yaegi/interp</a>
+package) reads the annotated AST and produces code intructions to be
+executed, through a <a
+href="https://en.wikipedia.org/wiki/Code_generation_%28compiler%29">code
+generation</a> step.</p></li>
+<li><p>The <em>executor</em> (implemented in the <a
+href="https://pkg.go.dev/github.com/traefik/yaegi/interp">yaegi/interp</a>
+package) runs the code instructions in the context of the
+interpreter.</p></li>
+</ol>
+<p>The interpreter is designed as a simple compiler, except that the
+code is generated into memory instead of object files, and with an
+executor module to run the specific instruction format.</p>
+<p>We won’t spend more details on the scanner and the parser, both
+provided by the standard library, and instead examine directly the
+analyser.</p>
+<h2 id="semantic-analysis">Semantic analysis</h2>
+<p>The analyser performs the semantic analysis of the program to
+interpret. This is done in several steps, all consisting of reading from
+and writing to the AST, so we first examine the details and dynamics of
+our AST representation.</p>
+<h3 id="ast-dynamics">AST dynamics</h3>
+<p>Hereafter stands the most important data structure of any compiler,
+interpreter or other language tool, and the function to use it
+(extracted from <a
+href="https://github.com/traefik/yaegi/blob/8de3add6faf471a807182c7b8198fe863debc9d8/interp/interp.go#L284-L296">here</a>).</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode go"><code class="sourceCode go"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// node defines a node of a (abstract syntax) tree.</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> node <span class="kw">struct</span> <span class="op">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Node children</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    child <span class="op">[]*</span>node</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Node metadata</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="co">// walk traverses AST n in depth first order, invoking in function</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co">// at node entry and out function at node exit.</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="kw">func</span> <span class="op">(</span>n <span class="op">*</span>node<span class="op">)</span> walk<span class="op">(</span>in <span class="kw">func</span><span class="op">(</span>n <span class="op">*</span>node<span class="op">)</span> <span class="dt">bool</span><span class="op">,</span> out <span class="kw">func</span><span class="op">(</span>n <span class="op">*</span>node<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> in <span class="op">!=</span> <span class="ot">nil</span> <span class="op">&amp;&amp;</span> <span class="op">!</span>in<span class="op">(</span>n<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> _<span class="op">,</span> child <span class="op">:=</span> <span class="kw">range</span> n<span class="op">.</span>child <span class="op">{</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>        child<span class="op">.</span>Walk<span class="op">(</span>in<span class="op">,</span> out<span class="op">)</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> out <span class="op">!=</span> <span class="ot">nil</span> <span class="op">{</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>        out<span class="op">(</span>n<span class="op">)</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>The above code is deceptively simple. As in many complex systems, an
+important part of the signification is carried by the relationships
+between the elements and the patterns they form. It’s easier to
+understand it by displaying the corresponding graph and consider the
+system as a whole. We can do that using a simple example:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode go"><code class="sourceCode go"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>a <span class="op">:=</span> <span class="dv">3</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> a <span class="op">&gt;</span> <span class="dv">2</span> <span class="op">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span><span class="op">(</span><span class="st">&quot;ok&quot;</span><span class="op">)</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span><span class="op">(</span><span class="st">&quot;bye&quot;</span><span class="op">)</span></span></code></pre></div>
+<p>The corresponding AST is:</p>
+<figure>
+<img src="ex1_raw_ast.drawio.svg" alt="figure 2: a raw AST" />
+<figcaption aria-hidden="true">figure 2: a raw AST</figcaption>
+</figure>
+<p>This is the raw AST, with no annotations, as obtained from the
+parser. Each node contains an index number (for labelling purpose only),
+and the node type, computed by the parser from the set of Go grammar
+rules (i.e. “stmt” for “list of <a
+href="https://go.dev/ref/spec#Statements">statements</a>”, “call” for
+“call <a href="https://go.dev/ref/spec#Expressions">expression</a>”, …).
+We also recognize the source tokens as literal values in leaf
+locations.</p>
+<p>Walking the tree consists in visiting the nodes starting from the
+root (node 1), in their numbering order (here from 1 to 15): depth first
+(the children before the siblings) and from left to right. At each node,
+a callback <code>in</code> is invoked at entry (pre-processing) and a
+callback <code>out</code> at exit (post-processing).</p>
+<p>When the <code>in</code> callback executes, only the information
+computed in the sub-trees in the left of the node is available, in
+addition to the pre-processing information computed in the node
+ancestors. The <code>in</code> callback returns a boolean. If the result
+is false, the node sub-tree is skipped, allowing to short-cut
+processing, for example to avoid to dive in function bodies and process
+only function signatures.</p>
+<p>When the <code>out</code> callback executes, the results computed on
+the whole descendant sub-trees are available, which is useful for
+example to compute the size of a composite object defined accross nested
+structures. In the absence of post-processing, multiple tree walks are
+necessary to achieve the same result.</p>
+<p>A semantic analysis step is therefore simply a tree walk with the
+right callbacks. In the case of our interpreter, we have two tree walks
+to perform: the globals and types analysis in <a
+href="https://github.com/traefik/yaegi/blob/master/interp/gta.go">interp/gta.go</a>
+and the control-flow graphs analysis in <a
+href="https://github.com/traefik/yaegi/blob/master/interp/cfg.go">interp/cfg.go</a>.
+In both files, notice the call to <code>root.Walk</code>.</p>
+<p>Note: we have chosen to represent the AST as a uniform node structure
+as opposed to the <a href="https://pkg.go.dev/go/ast#Node">ast.Node</a>
+interface in the Go standard library, implemented by specialized types
+for all the node kinds. The main reason is that the tree walk method <a
+href="https://pkg.go.dev/go/ast#Inspect">ast.Inspect</a> only permits a
+pre-processing callback, not a post-processing one, required for several
+compiling steps. It also seemed simpler at the time to start with this
+uniform structure, and we ended up sticking with it.</p>
+<h3 id="globals-and-types-analysis">Globals and types analysis</h3>
+<p>Our first operation on the AST is to check and register all the
+components of the program declared at global level. This is a partial
+analysis, concerned only about declarations and not function
+implementations.</p>
+<p>This step is necessary because in Go, at global level, symbols can be
+used before being declared (as opposed to Go function bodies, or in C in
+general, where use before declaration is simply forbidden in strict
+mode).</p>
+<p>Allowing out of order symbols is what permits the code to be
+scattered arbitrarily amongst several files in packages without more
+constraints. It is indeed an important feature to let the programer
+organize her code as she wants.</p>
+<p>This step, implemented in <a
+href="https://github.com/traefik/yaegi/blob/master/interp/gta.go">interp/gta.go</a>,
+consists in performing a tree walk with only a pre-processing callback
+(no <code>out</code> function is passed). There are two
+particularities:</p>
+<p>The first is the multiple-pass iterative walk. Indeed, in a first
+global pass, instead of failing with an error whenever an incomplete
+definition is met, the reference to the failing sub-tree is kept in a
+list of nodes to be retried, and the walk finishes going over the whole
+tree. Then, all the problematic sub-trees are iteratively retried until
+all the nodes have been defined, or as long as there is progress. That
+is, if two subsequent iterations lead to the exact same state, it is a
+hint that progress is not being made and it would result in an infinite
+loop, at which point yaegi just stops with an error.</p>
+<p>The second particularity is that despite being in a partial analysis
+step, a full interpretation can still be necessary on an expression
+sub-tree if this one serves to implement a global type definition. For
+example if an array size is computed by an expression as in the
+following valid Go declarations:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode go"><code class="sourceCode go"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> <span class="op">(</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    prefix <span class="op">=</span> <span class="st">&quot;/usr&quot;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    path   <span class="op">=</span> prefix <span class="op">+</span> <span class="st">&quot;/local/bin&quot;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="op">)</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> a <span class="op">[</span><span class="bu">len</span><span class="op">(</span>prefix<span class="op">+</span>path<span class="op">)</span> <span class="op">+</span> <span class="dv">2</span><span class="op">]</span><span class="dt">int</span></span></code></pre></div>
+<p>A paradox is that the compiler needs an interpreter to perform the
+type analysis! Indeed, in the example above, <code>[16]int</code>
+(because <code>len(prefix+path) + 2 = 16</code>) is a specific type in
+itself, distinct from e.g. <code>[14]int</code>. Which means that even
+though we are only at the types analysis phase we already must be able
+to compute the <code>len(prefix+path) + 2</code> expression. In the C
+language it is one of the roles of the <a
+href="https://gcc.gnu.org/onlinedocs/cpp/">pre-processor</a>, which
+means the compiler itself does not need to be able to achieve that. Here
+in Go, the specification forces the compiler implementor to provide and
+use early-on the mechanics involved above, which is usually called
+constant folding optimisation. It is therefore implemented both within
+the standard gc, and whithin yaegi. The same kind of approach is pushed
+to its paroxysm in the <a href="https://ziglang.org">Zig language</a>
+with its <a
+href="https://ziglang.org/documentation/master/#comptime">comptime</a>
+keyword.</p>
+<h3 id="control-flow-graphs">Control-flow graphs</h3>
+<p>After GTA, all the global symbols are properly defined no matter
+their declaration order. We can now proceed with the full code analysis,
+which will be performed by a single tree walk in <a
+href="https://github.com/traefik/yaegi/blob/master/interp/cfg.go">interp/cfg.go</a>.</p>
+<p>Both pre-processing and post-processing callbacks are provided to the
+walk function. Despite being activated in a single pass, multiple kinds
+of data processing are executed:</p>
+<ul>
+<li><p>Types checking and creation. Started in GTA, it is now completed
+also in all function bodies.</p></li>
+<li><p>Analysis of variable scoping: scope levels are opened in
+pre-processing and closed in post-processing, as the nesting of scope
+reflects the AST structure.</p></li>
+<li><p>Precise computing of object sizes and locations.</p></li>
+<li><p>Identification and ordering of actions.</p></li>
+</ul>
+<p>The last point is critical for code generation. It consists in the
+production of control-flow graphs. CFGs are usually represented in the
+form of an intermediate representation (IR), which really is a
+simplified machine independent instruction set, as in the <a
+href="https://gcc.gnu.org/onlinedocs/gccint/GIMPLE.html">GCC GIMPLE</a>,
+the <a href="https://llvm.org/docs/LangRef.html">LLVM IR</a> or the <a
+href="https://github.com/golang/go/blob/bf48163e8f2b604f3b9e83951e331cd11edd8495/src/cmd/compile/internal/ssa/README.md">SSA</a>
+form in the Go compiler. In yaegi, no IR is produced, only AST
+annotations are used.</p>
+<p>Let’s use our previous example to explain:</p>
+<figure>
+<img src="ex1_ast_cfg.drawio.svg" alt="figure 3: CFG is in AST" />
+<figcaption aria-hidden="true">figure 3: CFG is in AST</figcaption>
+</figure>
+<p>In the AST, the nodes relevant to the CFG are the <em>action</em>
+nodes (in blue), that is the nodes referring to an arithmetic or a logic
+operation, a function call or a memory operation (assigning a variable,
+accessing an array entry, …).</p>
+<p>Building the CFG consists in identifying action nodes and then find
+their successor (to be stored in node fields <code>tnext</code> and
+<code>fnext</code>). An action node has one successor in the general
+case (shown with a green arrow), or two if the action is associated to a
+conditional branch (green arrow if the test is true, red arrow
+otherwise).</p>
+<p>The rules to determine the successor of an action node are inherent
+to the properties of its neighbours (ancestors, siblings and
+descendants). For example, in the <code>if</code> sub-tree (nodes 5 to
+12), the first action to execute is the condition test, that is, the
+first action in the condition sub-tree, here the node 6. This action
+will have two alternative successors: one to execute if the test is
+true, the other if not. The <em>true</em> successor will be the first
+action in the second child sub-tree of the <code>if</code> node,
+describing the <em>true</em> branch (this sub-tree root is node 9, and
+first action 10). As there is no <code>if</code> <em>false</em> branch
+in our example, the next action of the whole <code>if</code> sub-tree is
+the first action in the <code>if</code> sibling sub-tree, here the node
+13. This node will be therefore the <em>false</em> successor, the first
+action to execute when the <code>if</code> condition fails. Finally the
+node 13 is also the successor of the <em>true</em> branch, the node 10.
+The corresponding implementation is located in a <a
+href="https://github.com/traefik/yaegi/blob/8de3add6faf471a807182c7b8198fe863debc9d8/interp/cfg.go#L1608-L1624">block
+of 16 lines</a> in the post-processing CFG callback. Note that the same
+code also performs dead branch elimination and condition validity
+checking. At this stage, in terms of Control Flow, our AST example can
+now be seen as a simpler representation, such as the following.</p>
+<figure>
+<img src="ex1_cfg.drawio.svg" alt="figure 4: the same CFG isolated" />
+<figcaption aria-hidden="true">figure 4: the same CFG
+isolated</figcaption>
+</figure>
+<p>In our example, the action nodes composing the CFG can do the
+following kind of operations: - defining variables in memory and
+assigning values to them - performing arithmetic or logical operations -
+conditional branching - function calling</p>
+<p>Adding the capacity to jump to a <em>backward</em> location (where
+destination node index is inferior to source’s one, an arrow from right
+to left), thus allowing <em>loops</em>, makes the action set to become
+<a href="https://en.wikipedia.org/wiki/Turing_completeness">Turing
+complete</a>, implementing a universal computing machine.</p>
+<figure>
+<img src="ex1_cfg_loop.drawio.svg" alt="figure 5: a CFG with a loop" />
+<figcaption aria-hidden="true">figure 5: a CFG with a loop</figcaption>
+</figure>
+<p>The character of universality here lies in the cyclic nature of the
+control-flow graph (remark that <code>if</code> statement graphs,
+although appearing cyclic, are not, because the conditional branches are
+mutually exclusives).</p>
+<p>This is not just theoretical. For example, forbidding backward jumps
+was crucial in the design of the Linux <a
+href="https://www.kernel.org/doc/html/latest/bpf/verifier.html">eBPF
+verifier</a>, in order to let user provided (therefore untrusted)
+snippets execute in a kernel system privileged environment and guarantee
+no infinite loops.</p>
+<h2 id="code-generation-and-execution">Code generation and
+execution</h2>
+<p>The compiler implemented in yaegi targets the Go runtime itself, not
+a particular hardware architecture. For each action node in the CFG a
+corresponding closure is generated. The main benefits are:</p>
+<ul>
+<li>Portability: the generated code runs on any platform where Go is
+supported.</li>
+<li>Interoperability: the objects produced by the interpreter are
+directly usable by the host program in the form of reflect values.</li>
+<li>The memory management in particular the garbage collector, is
+provided by the runtime, and applies also to the values created by the
+interpreter.</li>
+<li>The support of runtime type safety, slices, maps, channels,
+goroutines is also provided by the runtime.</li>
+</ul>
+<p>The action templates are located in <a
+href="https://github.com/traefik/yaegi/blob/master/interp/run.go">interp/run.go</a>
+and <a
+href="https://github.com/traefik/yaegi/blob/master/interp/op.go">interp/op.go</a>.
+Generating closures allows to optimize all the cases where a constant is
+used (an operation involving a constant and a variable is cheaper and
+faster than the same operation involving two variables). It also permits
+to hard-code the control-flow graph, that is to pre-define the next
+instruction to execute and avoid useless branch tests.</p>
+<p>The pseudo architecture targeted by the interpreter is in effect a
+virtual <a href="https://en.wikipedia.org/wiki/Stack_machine">stack
+machine</a> where the memory is represented as slices of Go reflect
+values, as shown in the following figure, and where the instructions are
+represented directly by the set of action nodes (the CFG) in the AST.
+Those atomic instructions, also called <em>builtins</em>, are sligthly
+higher level than a real hardware instruction set, because they operate
+directly on Go interfaces (more precisely their reflect representation),
+hiding a lot of low level processing and subtleties provided by the Go
+runtime.</p>
+<figure>
+<img src="frame1.drawio.svg" alt="figure 6: frame organization" />
+<figcaption aria-hidden="true">figure 6: frame organization</figcaption>
+</figure>
+<p>The memory management performed by the interpreter consists of
+creating a global frame at a new session (the top of the stack),
+populated with all global values (constants, types, variables and
+functions). At each new interpreted function call, a new frame is pushed
+on the stack, containing the values for all the return value, input
+parameters and local variables of the function.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>We have described the general architecture of a Go interpreter,
+reusing the existing Go scanner and parser. We have focused on the
+semantic analysis, which is based on AST annotations, up to the
+control-flow graph and code generation. This design leads to a
+consistent and concise compiler suitable for an embedded interpreter. We
+have also provided a succint overview of the virtual stack machine on
+top of the Go runtime, leveraging on the reflection layer provided by
+the Go standard library.</p>
+<p>We can now evolve this design to address different target
+architectures, for example a more efficient virtual machine, already in
+the works.</p>
+<p>Some parts of yaegi have not been detailed yet and will be addressed
+in a next article:</p>
+<ul>
+<li>Integration with pre-compiled packages</li>
+<li>Go Generics</li>
+<li>Recursive types</li>
+<li>Interfaces and methods</li>
+<li>Virtualization and sandboxing</li>
+<li>REPL and interactive use</li>
+</ul>
+<p>P.S. Thanks to <a href="https://twitter.com/@lejatorn"><span
+class="citation" data-cites="lejatorn">@lejatorn</span></a> for his
+feedback and suggestions on this post.</p>
+<hr>From: Marc Vertes, 03 may 2023]]>
+</item>
+</channel>
+</rss>
