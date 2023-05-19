@@ -3,10 +3,9 @@
 <channel>
 <title>Marc's Programming Notes</title>
 <link>https://marc.vertes.org/</link>
-<atom:link href="https://marc.vertes.org/feed.xml" rel="self" type="application/rss+xml" />
 <description>A blog about programming</description>
 <managingEditor>mvertes@free.fr (Marc Vertes)</managingEditor>
-<pubDate>Fri, 19 May 2023 18:59:21 +0200</pubDate>
+<pubDate>Fri, 19 May 2023 19:03:08 +0200</pubDate>
 <item>
 <guid isPermaLink="true">https://marc.vertes.org/yaegi-internals/</guid>
 <title>Yaegi Internals</title>

@@ -21,7 +21,6 @@ cat <<- EOT
 	<channel>
 	<title>$title</title>
 	<link>$link/</link>
-	<atom:link href="$link/feed.xml" rel="self" type="application/rss+xml" />
 	<description>$description</description>
 	<managingEditor>$email ($author)</managingEditor>
 	<pubDate>$(date -R)</pubDate>
