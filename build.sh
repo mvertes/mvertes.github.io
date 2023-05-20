@@ -15,6 +15,10 @@ header='<meta charset="UTF-8">
 	background-color: #f5f5f5;
 	overflow: auto;
   }
+  .footer {
+    text-align: center;
+    font-size: 0.8em;
+  }
 </style>
 '
 
@@ -49,5 +53,7 @@ genhtml .
 # Fix for mastodon.
 sed '/mstdn/s/href=/rel="me" href=/' index.html >xx && mv xx index.html
 # Put a license in index footer.
-echo '<hr><small>Unless otherwise noted, posts are licensed under 
-<a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</small>' >>index.html
+echo '<hr><div class="footer">
+<a href="feed.xml">RSS feed</a>. &emsp; &emsp; Licensed under
+<a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+</div>' >>index.html
