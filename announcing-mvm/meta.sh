@@ -1,0 +1,6 @@
+blog_title="Marc's Programming Notes"
+title="Announcing mvm"
+author="Marc Vertes"
+description="Announcing mvm"
+date="30 April 2026"
+date_rfc2822="Wed, 30 April 2026 12:00:00 +0200"
