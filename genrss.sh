@@ -43,6 +43,7 @@ for d in *; do
 		</content:encoded>
 		</item>
 	EOT
+	cd ..
 done
 
 cat <<- EOT

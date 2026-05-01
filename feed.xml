@@ -5,7 +5,49 @@
 <link>https://marc.vertes.org/</link>
 <description>A blog about programming</description>
 <managingEditor>mvertes@free.fr (Marc Vertes)</managingEditor>
-<pubDate>Fri, 19 May 2023 23:53:33 +0200</pubDate>
+<pubDate>Fri, 01 May 2026 20:45:13 +0000</pubDate>
+/home/marc/src/mvertes.github.io/announcing-mvm
+<item>
+<guid isPermaLink="true">https://marc.vertes.org/announcing-mvm/</guid>
+<title>Announcing mvm</title>
+<link>https://marc.vertes.org/announcing-mvm/</link>
+<description>Announcing mvm</description>
+<author>mvertes@free.fr (Marc Vertes)</author>
+<pubDate>Wed, 30 April 2026 12:00:00 +0200</pubDate>
+<content:encoded>
+<![CDATA[<h1 id="announcing-mvm">Announcing mvm</h1>
+<p>A few years ago, I wrote my first Go program. I was not exactly a
+beginner, having years of deep C programming experience in domains like
+air traffic control systems, telecoms, and operating systems.</p>
+<p>That first Go program was <a
+href="https://github.com/traefik/yaegi">yaegi</a>, a Go interpreter, a
+way to really understand the philosophy of this marvelous language from
+within, by applying it to itself. It went well: yaegi became widely
+adopted and, with the help of many, improved quite a lot.</p>
+<p>But not everything I learned along the way could be folded back into
+that first program without breaking it. On many levels, the time had
+come to start over from scratch. And here it is: mvm.</p>
+<p>I won’t go into deep technical discussions in this post. Today is
+about the rebirth of my first Go program. Still a Go interpreter, but
+much more than that.</p>
+<p>The function is the same, but the inner architecture is completely
+different.</p>
+<p>Yaegi is monolithic (a single package); mvm is modular (4 main
+packages).</p>
+<p>Yaegi is a pure interpreter; mvm is a compiler and a VM disguised as
+an interpreter.</p>
+<p>Yaegi offloads parsing to the standard library; mvm takes full
+control of it, and will eventually become multi-language.</p>
+<p>Yaegi has no VM. Mvm is a VM. And that is a profound game changer.
+More on that soon.</p>
+<p>And if it goes well, with your help, it will be my second and last
+first Go program.</p>
+<p>– Marc</p>
+<p><a href="https://mvm.sh">http://mvm.sh</a></p>
+<hr>From: Marc Vertes, 30 April 2026]]>
+</content:encoded>
+</item>
+/home/marc/src/mvertes.github.io/yaegi-internals
 <item>
 <guid isPermaLink="true">https://marc.vertes.org/yaegi-internals/</guid>
 <title>Yaegi Internals</title>

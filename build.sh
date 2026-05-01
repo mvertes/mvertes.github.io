@@ -57,3 +57,5 @@ echo '<hr><div class="footer">
 <a href="feed.xml">RSS feed</a>. &emsp; &emsp; Licensed under
 <a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
 </div>' >>index.html
+
+./genrss.sh >feed.xml
